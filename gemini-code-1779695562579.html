@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор автоимпорта: Хоргос — Алматы</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        /* Дополнительный фикс для плавных переходов */
+        input, select { transition: all 0.2s ease-in-out; }
+    </style>
+</head>
+<body class="bg-zinc-900 text-zinc-100 min-h-screen antialiased selection:bg-blue-600 selection:text-white">
+
+    <div class="max-w-7xl mx-auto px-4 py-8 md:py-12">
+        <header class="mb-10 text-center md:text-left">
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                Автокалькулятор: Хоргос — Алматы
+            </h1>
+            <p class="text-zinc-400 mt-2 text-sm md:text-base">
+                Точный расчет таможенных пошлин, налогов и утилизационного сбора Республики Казахстан на 2026 год.
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <main class="lg:col-span-7 bg-zinc-800/50 border border-zinc-700/60 rounded-2xl p-6 md:p-8 space-y-6 backdrop-blur-md">
+                
+                <h2 class="text-xl font-bold border-b border-zinc-700 pb-3 flex items-center gap-2">
+                    <span>🚗</span> Параметры автомобиля
+                </h2>
+
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Тип транспортного средства</label>
+                    <select id="vehicleType" onchange="toggleFields(); calculate();" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
+                        <option value="passenger">Легковой автомобиль (M1)</option>
+                        <option value="cargo">Грузовой автомобиль</option>
+                        <option value="moto">Мотоцикл</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Тип двигателя</label>
+                    <select id="engineType" onchange="toggleFields(); calculate();" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
+                        <option value="benzin">Бензин / Дизель</option>
+                        <option value="hev">Гибрид (HEV / PHEV)</option>
+                        <option value="bev">Электромобиль (BEV / чисто электрический)</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-1">
+                        <label class="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Валюта инвойса</label>
+                        <select id="currency" onchange="calculate();" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
+                            <option value="USD">USD ($)</option>
+                            <option value="CNY">CNY (¥)</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Стоимость на границе (Хоргос)</label>
+                        <input type="number" id="carPrice" value="18000" min="0" oninput="calculate();" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Возраст транспортного средства</label>
+                    <select id="carAge" onchange="calculate();" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
+                        <option value="new">Новый / До 2 лет (включая год выпуска)</option>
+                        <option value="mid">От 2 до 3 лет</option>
+                        <option value="old">Старше 3 лет</option>
+                    </select>
+                </div>
+
+                <div id="volumeBlock">
+                    <label class="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Объем двигателя (куб. см)</label>
+                    <input type="number" id="engineVolume" value="2000" min="0" oninput="calculate();" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Например: 1998">
+                </div>
+
+                <div class="pt-4">
+                    <h3 class="text-md font-bold text-zinc-300 mb-3 flex items-center gap-2">
+                        <span>📦</span> Логистика и сопутствующие расходы
+                    </h3>
+                    <div class="space-y-3">
+                        <label class="flex items-center bg-zinc-900/60 p-3 rounded-xl border border-zinc-700/50 cursor-pointer hover:border-zinc-600 transition">
+                            <input type="checkbox" id="checkBroker" checked onchange="calculate();" class="w-5 h-5 accent-blue-500 rounded border-zinc-700 bg-zinc-900">
+                            <span class="ml-3 text-sm">Услуги брокера и декларанта (~80 000 ₸)</span>
