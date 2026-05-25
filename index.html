@@ -1,307 +1,284 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Расчет доставки и очистки авто из Хоргоса</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Калькулятор пошлин и налогов — авто</title>
+  <style>
+    body { font-family: Inter, Roboto, Arial, sans-serif; background:#f6f7fb; color:#111; padding:20px; }
+    .container { max-width:980px; margin:0 auto; background:#fff; border-radius:8px; box-shadow:0 6px 24px rgba(20,20,40,0.06); padding:20px; }
+    h1 { font-size:20px; margin:0 0 12px; }
+    label { display:block; margin:10px 0 6px; font-weight:600; }
+    input[type="number"], select { width:100%; padding:8px 10px; border:1px solid #d6d9e6; border-radius:6px; box-sizing:border-box; }
+    .row { display:flex; gap:12px; }
+    .col { flex:1; }
+    .inline { display:flex; gap:8px; align-items:center; }
+    .checkbox { margin-right:8px; }
+    button { background:#0b5fff; color:#fff; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:700; }
+    button:active { transform:translateY(1px); }
+    .result { margin-top:18px; padding:14px; border-radius:8px; background:#f3f7ff; }
+    .line { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed rgba(0,0,0,0.04); }
+    .line strong { color:#0b5fff; }
+    .note { font-size:13px; color:#666; margin-top:10px; }
+    .small { font-size:13px; color:#444; }
+    .muted { color:#666; font-size:13px; }
+  </style>
 </head>
-<body class="bg-zinc-950 text-zinc-50 min-h-screen antialiased font-sans">
+<body>
+  <div class="container">
+    <h1>Калькулятор пошлин и налогов</h1>
+    <p class="muted">Выбери тип силовой установки и введи параметры. Ставки можно менять в коде (константы).</p>
 
-    <div class="max-w-6xl mx-auto px-4 py-8">
-        
-        <header class="mb-8">
-            <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-zinc-100">
-                📊 Итоговый калькулятор пошлин и налогов РК
-            </h1>
-            <p class="text-zinc-400 text-sm mt-1">
-                Актуальные ставки согласно Налоговому и Таможенному кодексам РК.
-            </p>
-            <p id="rateStatus" class="text-zinc-500 text-xs mt-1 animate-pulse">
-                ⏳ Синхронизация с сервером курсов валют...
-            </p>
-        </header>
+    <!-- Настройки расчёта (видимые пользователю) -->
+    <label for="currency">Валюта</label>
+    <select id="currency">
+      <option value="USD">USD</option>
+      <option value="EUR">EUR</option>
+      <option value="CNY">CNY</option>
+    </select>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            <div class="lg:col-span-7 bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-6">
-                
-                <h2 class="text-lg font-semibold text-zinc-200 border-b border-zinc-800 pb-3">
-                    Параметры автомобиля
-                </h2>
-
-                <div>
-                    <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2">Тип силовой установки</label>
-                    <select id="engineType" onchange="toggleVolumeBlock(); calculate();" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200 focus:outline-none focus:border-blue-500 cursor-pointer">
-                        <option value="benzin">Бензин / Дизель / Гибриды (ДВС)</option>
-                        <option value="bev">BEV — Электромобиль (Пошлина 0%)</option>
-                    </select>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2">Валюта</label>
-                        <select id="currency" onchange="calculate();" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200 focus:outline-none focus:border-blue-500 cursor-pointer">
-                            <option value="USD">USD ($)</option>
-                            <option value="CNY">CNY (¥)</option>
-                        </select>
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2">Цена автомобиля (в валюте)</label>
-                        <input type="number" id="carPrice" value="14867" min="0" oninput="calculate();" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200 focus:outline-none focus:border-blue-500">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2">Возраст автомобиля</label>
-                    <select id="carAge" onchange="calculate();" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200 focus:outline-none focus:border-blue-500 cursor-pointer">
-                        <option value="new">Новый / до 2 лет</option>
-                        <option value="mid">От 2 до 3 лет</option>
-                        <option value="old">От 3 до 7 лет</option>
-                        <option value="old7" selected>Старше 7 лет (Особый тариф ЕТТ)</option>
-                    </select>
-                </div>
-
-                <div id="volumeBlock">
-                    <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2">Объем двигателя (куб. см)</label>
-                    <input type="number" id="engineVolume" value="2000" min="0" oninput="calculate();" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200 focus:outline-none focus:border-blue-500">
-                </div>
-
-                <div class="pt-2 space-y-3">
-                    <h3 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Логистика и услуги</h3>
-                    
-                    <label class="flex items-center bg-zinc-950 p-3 rounded-xl border border-zinc-800 cursor-pointer select-none">
-                        <input type="checkbox" id="checkBroker" checked onchange="calculate();" class="w-5 h-5 accent-blue-500">
-                        <span class="ml-3 text-sm text-zinc-300">Брокер / декларант (~80 000 ₸)</span>
-                    </label>
-
-                    <label class="flex items-center bg-zinc-950 p-3 rounded-xl border border-zinc-800 cursor-pointer select-none">
-                        <input type="checkbox" id="checkSbkts" checked onchange="calculate();" class="w-5 h-5 accent-blue-500">
-                        <span class="ml-3 text-sm text-zinc-300">СБКТС (~50 000 ₸)</span>
-                    </label>
-
-                    <label class="flex items-center bg-zinc-950 p-3 rounded-xl border border-zinc-800 cursor-pointer select-none">
-                        <input type="checkbox" id="checkDelivery" onchange="calculate();" class="w-5 h-5 accent-blue-500">
-                        <span class="ml-3 text-sm text-zinc-300">Доставка автовозом до Алматы (~60 000 ₸)</span>
-                    </label>
-                </div>
-
-            </div>
-
-            <div class="lg:col-span-5 space-y-6">
-                
-                <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-                    <h2 class="text-md font-bold text-zinc-400 mb-4 flex items-center gap-2">
-                        📋 Итого к оплате
-                    </h2>
-
-                    <div class="bg-zinc-950 p-5 rounded-xl border border-zinc-800/80 mb-6 text-center lg:text-left">
-                        <div class="text-xs text-zinc-500 uppercase tracking-wider">Все расходы (авто + таможня + допы)</div>
-                        <div class="text-3xl font-black text-blue-400 mt-1 mb-0.5" id="totalAllKzt">0 ₸</div>
-                        <div class="text-zinc-400 text-sm" id="totalAllUsd">≈ 0 USD</div>
-                    </div>
-
-                    <div class="space-y-3 text-sm">
-                        <div class="flex justify-between border-b border-zinc-800 pb-2">
-                            <span class="text-zinc-400">Стоимость автомобиля:</span>
-                            <span id="outCarKzt" class="font-semibold text-zinc-200">0 ₸</span>
-                        </div>
-                        
-                        <div class="text-xs text-zinc-500 font-bold uppercase tracking-wider pt-2">Таможенные платежи</div>
-                        
-                        <div class="flex justify-between border-b border-zinc-800 pb-2">
-                            <span class="text-zinc-400">Таможенная пошлина:</span>
-                            <span id="outCustomsDuty" class="font-semibold text-zinc-200">0 ₸</span>
-                        </div>
-                        <div class="flex justify-between border-b border-zinc-800 pb-2">
-                            <span class="text-zinc-400">Таможенный сбор (6 МРП):</span>
-                            <span id="outCustomsFee" class="font-semibold text-zinc-200">0 ₸</span>
-                        </div>
-                        <div class="flex justify-between border-b border-zinc-800 pb-2">
-                            <span class="text-zinc-400">Акциз:</span>
-                            <span id="outAccise" class="font-semibold text-zinc-200">0 ₸</span>
-                        </div>
-                        <div class="flex justify-between border-b border-zinc-800 pb-2">
-                            <span class="text-zinc-400">НДС на импорт (16%):</span>
-                            <span id="outNds" class="font-semibold text-zinc-200">0 ₸</span>
-                        </div>
-                        <div class="flex justify-between border-b border-zinc-800 pb-2">
-                            <span class="text-zinc-400">Утилизационный сбор:</span>
-                            <span id="outUtil" class="font-semibold text-zinc-200">0 ₸</span>
-                        </div>
-                        <div class="flex justify-between border-b border-zinc-800 pb-2">
-                            <span class="text-zinc-400">Регистрационный сбор:</span>
-                            <span id="outReg" class="font-semibold text-zinc-200">0 ₸</span>
-                        </div>
-
-                        <div class="text-xs text-zinc-500 font-bold uppercase tracking-wider pt-2">Логистика</div>
-
-                        <div class="flex justify-between border-b border-zinc-800 pb-2">
-                            <span class="text-zinc-400">Услуги и доставка:</span>
-                            <span id="outLogistics" class="font-semibold text-zinc-200">0 ₸</span>
-                        </div>
-
-                        <div class="pt-4 space-y-2">
-                            <div class="flex justify-between text-zinc-300 font-bold">
-                                <span>Только таможня и налоги:</span>
-                                <span id="outTotalTaxesOnly" class="text-zinc-100">0 ₸</span>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4 text-xs text-zinc-500 leading-relaxed">
-                    Расчёт является предварительным. Для автомобилей старше 7 лет автоматически применяется минимальный порог пошлины в евро за куб. см согласно Единому таможенному тарифу ЕАЭС.
-                </div>
-
-            </div>
-
-        </div>
+    <div class="row" style="margin-top:8px;">
+      <div class="col">
+        <label for="price">Цена автомобиля (в выбранной валюте)</label>
+        <input id="price" type="number" min="0" step="0.01" value="0" />
+      </div>
+      <div class="col">
+        <label for="exchange">Курс к KZT (1 единица валюты = ? KZT)</label>
+        <input id="exchange" type="number" min="0" step="0.01" value="470" />
+      </div>
     </div>
 
-    <script>
-        // --- ГЛОБАЛЬНЫЕ НАСТРОЙКИ ---
-        const MRP = 4325; // Месячный расчетный показатель (2026 г.)
-        
-        // Резервные курсы на случай сбоя сети
-        let USD_RATE = 475.21; 
-        let CNY_RATE = 65.40;
-        let EUR_RATE = 512.30; 
+    <label for="powertrain">Тип силовой установки</label>
+    <select id="powertrain">
+      <option value="petrol">Бензин</option>
+      <option value="diesel">Дизель</option>
+      <option value="phev">PHEV</option>
+      <option value="reev">REEV</option>
+      <option value="bev">BEV</option>
+    </select>
 
-        // Функция автоматического получения живых курсов валют
-        async function fetchLiveRates() {
-            try {
-                const response = await fetch('https://open.er-api.com/v6/latest/USD');
-                if (!response.ok) throw new Error('Ошибка сети при запросе курсов');
-                const data = await response.json();
-                
-                if (data && data.rates && data.rates.KZT && data.rates.CNY && data.rates.EUR) {
-                    USD_RATE = data.rates.KZT;
-                    CNY_RATE = data.rates.KZT / data.rates.CNY;
-                    EUR_RATE = data.rates.KZT / data.rates.EUR;
-                    
-                    const statusEl = document.getElementById('rateStatus');
-                    statusEl.classList.remove('animate-pulse');
-                    statusEl.innerHTML = `
-                        <span class="text-emerald-400 font-medium">🟢 Курсы обновлены (API):</span> 
-                        1 $ = ${USD_RATE.toFixed(2)} ₸ | 1 ¥ = ${CNY_RATE.toFixed(2)} ₸ | 1 € = ${EUR_RATE.toFixed(2)} ₸
-                    `;
-                }
-            } catch (error) {
-                console.error("Не удалось обновить курсы валют:", error);
-                const statusEl = document.getElementById('rateStatus');
-                statusEl.classList.remove('animate-pulse');
-                statusEl.innerHTML = `
-                    <span class="text-amber-500 font-medium">⚠️ Резервный режим:</span> Используются базовые сохраненные курсы.
-                `;
-            }
-            calculate();
-        }
+    <div id="engineRow">
+      <label for="engineVolume">Объём двигателя (куб. см)</label>
+      <input id="engineVolume" type="number" min="0" step="1" value="0" />
+    </div>
 
-        function toggleVolumeBlock() {
-            const engineType = document.getElementById('engineType').value;
-            const volumeBlock = document.getElementById('volumeBlock');
-            volumeBlock.style.display = (engineType === 'bev') ? 'none' : 'block';
-        }
+    <div id="batteryRow" style="display:none;">
+      <label for="batteryKwh">Ёмкость батареи (кВт·ч)</label>
+      <input id="batteryKwh" type="number" min="0" step="0.1" value="0" />
+    </div>
 
-        function formatKzt(num) {
-            return Math.round(num).toLocaleString('ru-RU') + ' ₸';
-        }
+    <label for="age">Возраст автомобиля</label>
+    <select id="age">
+      <option value="new">Новый / до 2 лет</option>
+      <option value="used">Б/у (старше 2 лет)</option>
+    </select>
 
-        function calculate() {
-            const CUSTOMS_FEE = 6 * MRP; 
-            const NDS_RATE = 0.16; 
+    <label style="margin-top:12px;">Логистика и услуги</label>
+    <div class="inline">
+      <input id="broker" class="checkbox" type="checkbox" />
+      <label for="broker" style="margin:0;">Брокер / декларант (KZT)</label>
+      <input id="brokerCost" type="number" style="width:160px; margin-left:auto;" value="80000" />
+    </div>
+    <div class="inline" style="margin-top:6px;">
+      <input id="sbkts" class="checkbox" type="checkbox" />
+      <label for="sbkts" style="margin:0;">СБКТС (KZT)</label>
+      <input id="sbktsCost" type="number" style="width:160px; margin-left:auto;" value="50000" />
+    </div>
+    <div class="inline" style="margin-top:6px;">
+      <input id="delivery" class="checkbox" type="checkbox" />
+      <label for="delivery" style="margin:0;">Доставка автовозом до Алматы (KZT)</label>
+      <input id="deliveryCost" type="number" style="width:160px; margin-left:auto;" value="60000" />
+    </div>
 
-            const engineType = document.getElementById('engineType').value;
-            const currency = document.getElementById('currency').value;
-            const inputPrice = parseFloat(document.getElementById('carPrice').value) || 0;
-            const carAge = document.getElementById('carAge').value;
-            const engineVolume = parseFloat(document.getElementById('engineVolume').value) || 0;
+    <div style="margin-top:14px; display:flex; gap:12px;">
+      <button id="calcBtn">Посчитать</button>
+      <button id="resetBtn" style="background:#e6e9f2; color:#0b5fff;">Сбросить</button>
+    </div>
 
-            const currentRate = (currency === 'USD') ? USD_RATE : CNY_RATE;
-            const carPriceKzt = inputPrice * currentRate;
+    <div id="result" class="result" style="display:none;">
+      <div class="line"><div class="small">Стоимость автомобиля в KZT</div><div id="priceKzt" class="small"></div></div>
+      <div class="line"><div class="small">Таможенная пошлина</div><div id="customsDuty" class="small"></div></div>
+      <div class="line"><div class="small">Акциз</div><div id="excise" class="small"></div></div>
+      <div class="line"><div class="small">НДС</div><div id="vat" class="small"></div></div>
+      <div class="line"><div class="small">Утилизационный сбор</div><div id="recycling" class="small"></div></div>
+      <div class="line"><div class="small">Таможенный сбор</div><div id="customsFee" class="small"></div></div>
+      <div class="line"><div class="small">Логистика и услуги</div><div id="logistics" class="small"></div></div>
+      <div class="line" style="border-bottom:2px solid rgba(0,0,0,0.06);"><strong>Итого к оплате</strong><strong id="total" style="color:#111;"></strong></div>
+      <p class="note">Примечание: расчёт предварительный. Подставь реальные формулы и ставки в блоке констант в скрипте.</p>
+    </div>
+  </div>
 
-            // 1. Расчет таможенной пошлины с учетом ограничений ЕТТ для возраста авто
-            let customsDuty = 0;
-            if (engineType !== 'bev') {
-                if (carAge === 'old7') {
-                    // Логика ЕТТ для автомобилей старше 7 лет
-                    let baseDutyPercent = carPriceKzt * 0.15;
-                    
-                    if (engineVolume <= 1500) {
-                        let minDutyEurKzt = (engineVolume * 0.6) * EUR_RATE;
-                        customsDuty = Math.max(baseDutyPercent, minDutyEurKzt);
-                    } 
-                    else if (engineVolume > 1500 && engineVolume <= 3000) {
-                        let dutyByCcKzt = (engineVolume * 0.5) * EUR_RATE;
-                        let floorLimit = carPriceKzt * 0.15;
-                        let ceilingLimit = carPriceKzt * 0.18;
-                        customsDuty = Math.max(floorLimit, Math.min(ceilingLimit, dutyByCcKzt));
-                    } 
-                    else if (engineVolume > 3000) {
-                        let minDutyEurKzt = (engineVolume * 0.6) * EUR_RATE;
-                        customsDuty = Math.max(baseDutyPercent, minDutyEurKzt);
-                    }
-                } else {
-                    // Для всех авто до 7 лет пошлина составляет стандартные 15%
-                    customsDuty = carPriceKzt * 0.15;
-                }
-            }
+  <script>
+    /*************************************************************************
+     * Настройки и формулы
+     * Подставь реальные ставки и формулы вместо примеров ниже.
+     *************************************************************************/
+    const RATES = {
+      VAT_RATE: 0.12,            // НДС (например 12%); поменяй при необходимости
+      // Примерные ставки таможенной пошлины по типу (в долях от цены)
+      CUSTOMS_RATE: {
+        bev: 0.00,
+        phev: 0.05,
+        reev: 0.05,
+        petrol: 0.10,
+        diesel: 0.10
+      },
+      // Пример акциза: KZT за куб.см для ДВС; для BEV акциз = 0
+      EXCISE_PER_CM3: 10,       // пример: 10 KZT за см3 — замени на реальную формулу
+      // Пример утилизационного сбора (фиксированно)
+      RECYCLING_FEE: 1081250,   // пример в KZT
+      // Таможенный фиксированный сбор (6 МРП) — можно оставить как фиксированное значение
+      CUSTOMS_FIXED_FEE: 25950  // пример
+    };
 
-            // 2. Акциз
-            let accise = (engineType !== 'bev' && engineVolume > 3000) ? engineVolume * 100 : 0;
+    // UI элементы
+    const powertrain = document.getElementById('powertrain');
+    const engineRow = document.getElementById('engineRow');
+    const batteryRow = document.getElementById('batteryRow');
+    const calcBtn = document.getElementById('calcBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const resultBox = document.getElementById('result');
 
-            // 3. НДС на импорт (16% от полной базы)
-            let nds = (carPriceKzt + customsDuty + CUSTOMS_FEE + accise) * NDS_RATE;
+    // Inputs
+    const priceInput = document.getElementById('price');
+    const exchangeInput = document.getElementById('exchange');
+    const engineInput = document.getElementById('engineVolume');
+    const batteryInput = document.getElementById('batteryKwh');
+    const ageInput = document.getElementById('age');
+    const currencyInput = document.getElementById('currency');
 
-            // 4. Утилизационный сбор
-            let utilFee = 0;
-            if (engineType !== 'bev') {
-                let coef = 0;
-                if (engineVolume <= 1000) coef = 1.5;
-                else if (engineVolume > 1000 && engineVolume <= 2000) coef = 3.5;
-                else if (engineVolume > 2000 && engineVolume <= 3000) coef = 5.0;
-                else if (engineVolume > 3000) coef = 11.5;
+    const brokerCheckbox = document.getElementById('broker');
+    const brokerCostInput = document.getElementById('brokerCost');
+    const sbktsCheckbox = document.getElementById('sbkts');
+    const sbktsCostInput = document.getElementById('sbktsCost');
+    const deliveryCheckbox = document.getElementById('delivery');
+    const deliveryCostInput = document.getElementById('deliveryCost');
 
-                utilFee = (50 * MRP) * coef;
-            }
+    // Result fields
+    const priceKztEl = document.getElementById('priceKzt');
+    const customsDutyEl = document.getElementById('customsDuty');
+    const exciseEl = document.getElementById('excise');
+    const vatEl = document.getElementById('vat');
+    const recyclingEl = document.getElementById('recycling');
+    const customsFeeEl = document.getElementById('customsFee');
+    const logisticsEl = document.getElementById('logistics');
+    const totalEl = document.getElementById('total');
 
-            // 5. Сбор за первичную регистрацию
-            let regFee = 0;
-            if (carAge === 'new') regFee = 0.25 * MRP;
-            else if (carAge === 'mid') regFee = 50 * MRP;
-            else if (carAge === 'old' || carAge === 'old7') regFee = 500 * MRP; // Для всех старше 3 лет одинаково — 500 МРП
+    // Показывать/скрывать поля в зависимости от типа
+    function updateFields() {
+      const type = powertrain.value;
+      if (type === 'bev') {
+        engineRow.style.display = 'none';
+        batteryRow.style.display = 'block';
+        engineInput.value = 0;
+      } else if (type === 'phev' || type === 'reev') {
+        engineRow.style.display = 'block';
+        batteryRow.style.display = 'block';
+      } else {
+        engineRow.style.display = 'block';
+        batteryRow.style.display = 'none';
+        batteryInput.value = 0;
+      }
+    }
+    powertrain.addEventListener('change', updateFields);
+    updateFields();
 
-            // 6. Дополнительные расходы логистики
-            let logisticsTotal = 0;
-            if (document.getElementById('checkBroker').checked) logisticsTotal += 80000;
-            if (document.getElementById('checkSbkts').checked) logisticsTotal += 50000;
-            if (document.getElementById('checkDelivery').checked) logisticsTotal += 60000;
+    // Форматирование чисел
+    function fmt(n) {
+      return Number(n).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+    }
 
-            // Сведение общих сумм
-            const totalTaxesOnly = customsDuty + CUSTOMS_FEE + accise + nds + utilFee + regFee;
-            const finalTotalKzt = carPriceKzt + totalTaxesOnly + logisticsTotal;
-            const finalTotalUsd = finalTotalKzt / USD_RATE;
+    // Основная функция расчёта
+    function calculate() {
+      // Вводные
+      const price = parseFloat(priceInput.value) || 0;
+      const exchange = parseFloat(exchangeInput.value) || 1;
+      const engine = parseFloat(engineInput.value) || 0;
+      const battery = parseFloat(batteryInput.value) || 0;
+      const type = powertrain.value;
+      const age = ageInput.value;
 
-            // Вывод результатов на страницу
-            document.getElementById('totalAllKzt').innerText = formatKzt(finalTotalKzt);
-            document.getElementById('totalAllUsd').innerText = '≈ ' + Math.round(finalTotalUsd).toLocaleString('ru-RU') + ' USD';
-            
-            document.getElementById('outCarKzt').innerText = formatKzt(carPriceKzt);
-            document.getElementById('outCustomsDuty').innerText = formatKzt(customsDuty);
-            document.getElementById('outCustomsFee').innerText = formatKzt(CUSTOMS_FEE);
-            document.getElementById('outAccise').innerText = (accise > 0) ? formatKzt(accise) : 'не применяется';
-            document.getElementById('outNds').innerText = formatKzt(nds);
-            document.getElementById('outUtil').innerText = formatKzt(utilFee);
-            document.getElementById('outReg').innerText = formatKzt(regFee);
-            document.getElementById('outLogistics').innerText = formatKzt(logisticsTotal);
-            document.getElementById('outTotalTaxesOnly').innerText = formatKzt(totalTaxesOnly);
-        }
+      // Перевод цены в KZT
+      const priceKzt = price * exchange;
 
-        // Первичный запуск
-        toggleVolumeBlock();
-        fetchLiveRates();
-    </script>
+      // Логика таможенной пошлины (пример)
+      let customsRate = RATES.CUSTOMS_RATE[type] ?? 0.10;
+      // Пример: для старых авто могут быть минимальные пороги — здесь можно добавить логику
+      let customsDuty = priceKzt * customsRate;
+
+      // Акциз: для BEV = 0; для PHEV/REEV/Petrol/Diesel — по объёму двигателя
+      let excise = 0;
+      if (type === 'bev') {
+        excise = 0;
+      } else {
+        // Пример: акциз = EXCISE_PER_CM3 * объём
+        excise = engine * RATES.EXCISE_PER_CM3;
+      }
+
+      // Прочие (можно добавить минимальные пороги, корректировки по возрасту)
+      let other = 0;
+
+      // НДС: ставка от базы (цена + пошлина + акциз + другие)
+      const baseForVat = priceKzt + customsDuty + excise + other;
+      const vat = baseForVat * RATES.VAT_RATE;
+
+      // Утилизационный сбор и фикс. таможенный сбор
+      const recycling = RATES.RECYCLING_FEE;
+      const customsFixed = RATES.CUSTOMS_FIXED_FEE;
+
+      // Логистика и услуги
+      let logistics = 0;
+      if (brokerCheckbox.checked) logistics += parseFloat(brokerCostInput.value) || 0;
+      if (sbktsCheckbox.checked) logistics += parseFloat(sbktsCostInput.value) || 0;
+      if (deliveryCheckbox.checked) logistics += parseFloat(deliveryCostInput.value) || 0;
+
+      // Итог
+      const total = priceKzt + customsDuty + excise + vat + recycling + customsFixed + logistics;
+
+      // Вывод
+      priceKztEl.textContent = fmt(priceKzt) + ' KZT';
+      customsDutyEl.textContent = fmt(customsDuty) + ' KZT';
+      exciseEl.textContent = fmt(excise) + ' KZT';
+      vatEl.textContent = fmt(vat) + ' KZT';
+      recyclingEl.textContent = fmt(recycling) + ' KZT';
+      customsFeeEl.textContent = fmt(customsFixed) + ' KZT';
+      logisticsEl.textContent = fmt(logistics) + ' KZT';
+      totalEl.textContent = fmt(total) + ' KZT';
+
+      resultBox.style.display = 'block';
+
+      // Возвращаем объект для дальнейшей обработки, если нужно
+      return {
+        priceKzt, customsDuty, excise, vat, recycling, customsFixed, logistics, total, type, engine, battery
+      };
+    }
+
+    calcBtn.addEventListener('click', () => {
+      calculate();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      priceInput.value = 0;
+      exchangeInput.value = 470;
+      engineInput.value = 0;
+      batteryInput.value = 0;
+      powertrain.value = 'petrol';
+      brokerCheckbox.checked = true;
+      sbktsCheckbox.checked = true;
+      deliveryCheckbox.checked = false;
+      brokerCostInput.value = 80000;
+      sbktsCostInput.value = 50000;
+      deliveryCostInput.value = 60000;
+      updateFields();
+      resultBox.style.display = 'none';
+    });
+
+    // Быстрая валидация: если BEV и введён объём двигателя — предупреждаем и обнуляем
+    engineInput.addEventListener('input', () => {
+      if (powertrain.value === 'bev' && parseFloat(engineInput.value) > 0) {
+        engineInput.value = 0;
+      }
+    });
+  </script>
 </body>
 </html>
