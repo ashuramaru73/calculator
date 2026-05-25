@@ -15,7 +15,10 @@
                 📊 Итоговый калькулятор пошлин и налогов РК
             </h1>
             <p class="text-zinc-400 text-sm mt-1">
-                Актуальные ставки согласно Налоговому и Таможенному кодексам РК. МРП = 4 325 ₸.
+                Актуальные ставки согласно Налоговому и Таможенному кодексам РК.
+            </p>
+            <p id="rateStatus" class="text-zinc-500 text-xs mt-1 animate-pulse">
+                ⏳ Синхронизация с сервером курсов валют...
             </p>
         </header>
 
@@ -54,7 +57,8 @@
                     <select id="carAge" onchange="calculate();" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200 focus:outline-none focus:border-blue-500 cursor-pointer">
                         <option value="new">Новый / до 2 лет</option>
                         <option value="mid">От 2 до 3 лет</option>
-                        <option value="old" selected>Старше 3 лет (например, 5 лет)</option>
+                        <option value="old">От 3 до 7 лет</option>
+                        <option value="old7" selected>Старше 7 лет (Особый тариф ЕТТ)</option>
                     </select>
                 </div>
 
@@ -148,7 +152,7 @@
                 </div>
 
                 <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4 text-xs text-zinc-500 leading-relaxed">
-                    Расчёт является предварительным. Точная сумма зависит от курса валют на день подачи декларации и оценки стоимости инспектором. Ставки и пошлины приведены в полное соответствие с Налоговым кодексом РК.
+                    Расчёт является предварительным. Для автомобилей старше 7 лет автоматически применяется минимальный порог пошлины в евро за куб. см согласно Единому таможенному тарифу ЕАЭС.
                 </div>
 
             </div>
@@ -157,6 +161,44 @@
     </div>
 
     <script>
+        // --- ГЛОБАЛЬНЫЕ НАСТРОЙКИ ---
+        const MRP = 4325; // Месячный расчетный показатель (2026 г.)
+        
+        // Резервные курсы на случай сбоя сети
+        let USD_RATE = 475.21; 
+        let CNY_RATE = 65.40;
+        let EUR_RATE = 512.30; 
+
+        // Функция автоматического получения живых курсов валют
+        async function fetchLiveRates() {
+            try {
+                const response = await fetch('https://open.er-api.com/v6/latest/USD');
+                if (!response.ok) throw new Error('Ошибка сети при запросе курсов');
+                const data = await response.json();
+                
+                if (data && data.rates && data.rates.KZT && data.rates.CNY && data.rates.EUR) {
+                    USD_RATE = data.rates.KZT;
+                    CNY_RATE = data.rates.KZT / data.rates.CNY;
+                    EUR_RATE = data.rates.KZT / data.rates.EUR;
+                    
+                    const statusEl = document.getElementById('rateStatus');
+                    statusEl.classList.remove('animate-pulse');
+                    statusEl.innerHTML = `
+                        <span class="text-emerald-400 font-medium">🟢 Курсы обновлены (API):</span> 
+                        1 $ = ${USD_RATE.toFixed(2)} ₸ | 1 ¥ = ${CNY_RATE.toFixed(2)} ₸ | 1 € = ${EUR_RATE.toFixed(2)} ₸
+                    `;
+                }
+            } catch (error) {
+                console.error("Не удалось обновить курсы валют:", error);
+                const statusEl = document.getElementById('rateStatus');
+                statusEl.classList.remove('animate-pulse');
+                statusEl.innerHTML = `
+                    <span class="text-amber-500 font-medium">⚠️ Резервный режим:</span> Используются базовые сохраненные курсы.
+                `;
+            }
+            calculate();
+        }
+
         function toggleVolumeBlock() {
             const engineType = document.getElementById('engineType').value;
             const volumeBlock = document.getElementById('volumeBlock');
@@ -168,13 +210,8 @@
         }
 
         function calculate() {
-            // Константы
-            const MRP = 4325;
-            const CUSTOMS_FEE = 6 * MRP; // 25 950 ₸
-            const NDS_RATE = 0.16; // Повышенная ставка НДС 16%
-            
-            const USD_RATE = 475.21356; 
-            const CNY_RATE = 65.40;
+            const CUSTOMS_FEE = 6 * MRP; 
+            const NDS_RATE = 0.16; 
 
             const engineType = document.getElementById('engineType').value;
             const currency = document.getElementById('currency').value;
@@ -185,16 +222,40 @@
             const currentRate = (currency === 'USD') ? USD_RATE : CNY_RATE;
             const carPriceKzt = inputPrice * currentRate;
 
-            // 1. Таможенная пошлина (15% для ДВС, 0% для электро)
-            let customsDuty = (engineType === 'bev') ? 0 : carPriceKzt * 0.15;
+            // 1. Расчет таможенной пошлины с учетом ограничений ЕТТ для возраста авто
+            let customsDuty = 0;
+            if (engineType !== 'bev') {
+                if (carAge === 'old7') {
+                    // Логика ЕТТ для автомобилей старше 7 лет
+                    let baseDutyPercent = carPriceKzt * 0.15;
+                    
+                    if (engineVolume <= 1500) {
+                        let minDutyEurKzt = (engineVolume * 0.6) * EUR_RATE;
+                        customsDuty = Math.max(baseDutyPercent, minDutyEurKzt);
+                    } 
+                    else if (engineVolume > 1500 && engineVolume <= 3000) {
+                        let dutyByCcKzt = (engineVolume * 0.5) * EUR_RATE;
+                        let floorLimit = carPriceKzt * 0.15;
+                        let ceilingLimit = carPriceKzt * 0.18;
+                        customsDuty = Math.max(floorLimit, Math.min(ceilingLimit, dutyByCcKzt));
+                    } 
+                    else if (engineVolume > 3000) {
+                        let minDutyEurKzt = (engineVolume * 0.6) * EUR_RATE;
+                        customsDuty = Math.max(baseDutyPercent, minDutyEurKzt);
+                    }
+                } else {
+                    // Для всех авто до 7 лет пошлина составляет стандартные 15%
+                    customsDuty = carPriceKzt * 0.15;
+                }
+            }
 
-            // 2. Акциз (100 тенге за 1 куб. см, если объем > 3000)
+            // 2. Акциз
             let accise = (engineType !== 'bev' && engineVolume > 3000) ? engineVolume * 100 : 0;
 
-            // 3. НДС на импорт (16% от полной базы: Стоимость + Пошлина + Сбор + Акциз)
+            // 3. НДС на импорт (16% от полной базы)
             let nds = (carPriceKzt + customsDuty + CUSTOMS_FEE + accise) * NDS_RATE;
 
-            // 4. Утилизационный сбор (Без ошибочного удвоения за возраст!)
+            // 4. Утилизационный сбор
             let utilFee = 0;
             if (engineType !== 'bev') {
                 let coef = 0;
@@ -210,20 +271,20 @@
             let regFee = 0;
             if (carAge === 'new') regFee = 0.25 * MRP;
             else if (carAge === 'mid') regFee = 50 * MRP;
-            else if (carAge === 'old') regFee = 500 * MRP;
+            else if (carAge === 'old' || carAge === 'old7') regFee = 500 * MRP; // Для всех старше 3 лет одинаково — 500 МРП
 
-            // 6. Дополнительные расходы
+            // 6. Дополнительные расходы логистики
             let logisticsTotal = 0;
             if (document.getElementById('checkBroker').checked) logisticsTotal += 80000;
             if (document.getElementById('checkSbkts').checked) logisticsTotal += 50000;
             if (document.getElementById('checkDelivery').checked) logisticsTotal += 60000;
 
-            // Итоговые расчеты
+            // Сведение общих сумм
             const totalTaxesOnly = customsDuty + CUSTOMS_FEE + accise + nds + utilFee + regFee;
             const finalTotalKzt = carPriceKzt + totalTaxesOnly + logisticsTotal;
             const finalTotalUsd = finalTotalKzt / USD_RATE;
 
-            // Вывод на страницу
+            // Вывод результатов на страницу
             document.getElementById('totalAllKzt').innerText = formatKzt(finalTotalKzt);
             document.getElementById('totalAllUsd').innerText = '≈ ' + Math.round(finalTotalUsd).toLocaleString('ru-RU') + ' USD';
             
@@ -238,9 +299,9 @@
             document.getElementById('outTotalTaxesOnly').innerText = formatKzt(totalTaxesOnly);
         }
 
-        // Запуск при загрузке
+        // Первичный запуск
         toggleVolumeBlock();
-        calculate();
+        fetchLiveRates();
     </script>
 </body>
 </html>
