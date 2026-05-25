@@ -15,7 +15,7 @@
                 📊 Итоговый калькулятор пошлин и налогов РК
             </h1>
             <p class="text-zinc-400 text-sm mt-1">
-                Актуальные ставки на 2026 год согласно Решению ЕЭК №81. МРП = 4 325 ₸.
+                Актуальные ставки согласно Налоговому и Таможенному кодексам РК. МРП = 4 325 ₸.
             </p>
         </header>
 
@@ -106,7 +106,7 @@
                         <div class="text-xs text-zinc-500 font-bold uppercase tracking-wider pt-2">Таможенные платежи</div>
                         
                         <div class="flex justify-between border-b border-zinc-800 pb-2">
-                            <span class="text-zinc-400">Таможенная пошлина (15%):</span>
+                            <span class="text-zinc-400">Таможенная пошлина:</span>
                             <span id="outCustomsDuty" class="font-semibold text-zinc-200">0 ₸</span>
                         </div>
                         <div class="flex justify-between border-b border-zinc-800 pb-2">
@@ -118,7 +118,7 @@
                             <span id="outAccise" class="font-semibold text-zinc-200">0 ₸</span>
                         </div>
                         <div class="flex justify-between border-b border-zinc-800 pb-2">
-                            <span class="text-zinc-400">НДС на импорт (12%):</span>
+                            <span class="text-zinc-400">НДС на импорт (16%):</span>
                             <span id="outNds" class="font-semibold text-zinc-200">0 ₸</span>
                         </div>
                         <div class="flex justify-between border-b border-zinc-800 pb-2">
@@ -148,7 +148,7 @@
                 </div>
 
                 <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4 text-xs text-zinc-500 leading-relaxed">
-                    Расчёт является предварительным. Точная сумма зависит от курса валют на день подачи декларации и оценки стоимости инспектором. Ставки актуальны на 2026 год (ЕЭК №81 от 23.09.2025).
+                    Расчёт является предварительным. Точная сумма зависит от курса валют на день подачи декларации и оценки стоимости инспектором. Ставки и пошлины приведены в полное соответствие с Налоговым кодексом РК.
                 </div>
 
             </div>
@@ -157,50 +157,44 @@
     </div>
 
     <script>
-        // Функция скрытия блока объема для электрокаров
         function toggleVolumeBlock() {
             const engineType = document.getElementById('engineType').value;
             const volumeBlock = document.getElementById('volumeBlock');
             volumeBlock.style.display = (engineType === 'bev') ? 'none' : 'block';
         }
 
-        // Функция форматирования вывода валюты
         function formatKzt(num) {
             return Math.round(num).toLocaleString('ru-RU') + ' ₸';
         }
 
         function calculate() {
-            // Константы 2026 года
+            // Константы
             const MRP = 4325;
-            const CUSTOMS_FEE = 6 * MRP; // 25 950 ₸ согласно документу ЕЭК и МРП 2026
-            const NDS_RATE = 0.12;
+            const CUSTOMS_FEE = 6 * MRP; // 25 950 ₸
+            const NDS_RATE = 0.16; // Повышенная ставка НДС 16%
             
-            // Фиксируем жесткий кросс-курс, по которому считал калькулятор на скрине
-            // 14867 USD = 7 065 000 KZT -> курс ровно 475.21356
             const USD_RATE = 475.21356; 
             const CNY_RATE = 65.40;
 
-            // Считываем значения с формы сайта
             const engineType = document.getElementById('engineType').value;
             const currency = document.getElementById('currency').value;
             const inputPrice = parseFloat(document.getElementById('carPrice').value) || 0;
             const carAge = document.getElementById('carAge').value;
             const engineVolume = parseFloat(document.getElementById('engineVolume').value) || 0;
 
-            // Конвертируем стоимость машины в тенге
             const currentRate = (currency === 'USD') ? USD_RATE : CNY_RATE;
             const carPriceKzt = inputPrice * currentRate;
 
             // 1. Таможенная пошлина (15% для ДВС, 0% для электро)
             let customsDuty = (engineType === 'bev') ? 0 : carPriceKzt * 0.15;
 
-            // 2. Акциз (только если объем ДВС больше 3000 куб. см)
+            // 2. Акциз (100 тенге за 1 куб. см, если объем > 3000)
             let accise = (engineType !== 'bev' && engineVolume > 3000) ? engineVolume * 100 : 0;
 
-            // 3. НДС на импорт (12% от базы по классической б/у схеме ЕТТ)
-            let nds = (carPriceKzt + customsDuty) * NDS_RATE;
+            // 3. НДС на импорт (16% от полной базы: Стоимость + Пошлина + Сбор + Акциз)
+            let nds = (carPriceKzt + customsDuty + CUSTOMS_FEE + accise) * NDS_RATE;
 
-            // 4. Утилизационный сбор с автоматическим удвоением коэффициента для авто старше 3 лет!
+            // 4. Утилизационный сбор (Без ошибочного удвоения за возраст!)
             let utilFee = 0;
             if (engineType !== 'bev') {
                 let coef = 0;
@@ -209,31 +203,27 @@
                 else if (engineVolume > 2000 && engineVolume <= 3000) coef = 5.0;
                 else if (engineVolume > 3000) coef = 11.5;
 
-                // Для машин старше 3 лет (Б/У) государственные коэффициенты умножаются на 2
-                if (carAge === 'old') {
-                    coef = coef * 2; // Например, 3.5 превращается в 7
-                }
                 utilFee = (50 * MRP) * coef;
             }
 
-            // 5. Сбор за первичную регистрацию в ЦОНе
+            // 5. Сбор за первичную регистрацию
             let regFee = 0;
             if (carAge === 'new') regFee = 0.25 * MRP;
             else if (carAge === 'mid') regFee = 50 * MRP;
             else if (carAge === 'old') regFee = 500 * MRP;
 
-            // 6. Подсчет выбранных доп. расходов логистики
+            // 6. Дополнительные расходы
             let logisticsTotal = 0;
             if (document.getElementById('checkBroker').checked) logisticsTotal += 80000;
             if (document.getElementById('checkSbkts').checked) logisticsTotal += 50000;
             if (document.getElementById('checkDelivery').checked) logisticsTotal += 60000;
 
-            // Сведение общих сумм
+            // Итоговые расчеты
             const totalTaxesOnly = customsDuty + CUSTOMS_FEE + accise + nds + utilFee + regFee;
             const finalTotalKzt = carPriceKzt + totalTaxesOnly + logisticsTotal;
             const finalTotalUsd = finalTotalKzt / USD_RATE;
 
-            // Моментальный вывод результатов на страницу сайта
+            // Вывод на страницу
             document.getElementById('totalAllKzt').innerText = formatKzt(finalTotalKzt);
             document.getElementById('totalAllUsd').innerText = '≈ ' + Math.round(finalTotalUsd).toLocaleString('ru-RU') + ' USD';
             
@@ -248,7 +238,7 @@
             document.getElementById('outTotalTaxesOnly').innerText = formatKzt(totalTaxesOnly);
         }
 
-        // Первичный запуск функций при загрузке страницы
+        // Запуск при загрузке
         toggleVolumeBlock();
         calculate();
     </script>
